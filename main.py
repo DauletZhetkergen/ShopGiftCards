@@ -39,6 +39,7 @@ class Add_procut(StatesGroup):
     category = State()
     product_id = State()
     price = State()
+    codes = State()
 
 
 
@@ -86,13 +87,24 @@ async def check_payment(address,price_btc,products_id,quantity):
 
 async def quantity_keyboard(id):
     markup = InlineKeyboardMarkup()
-    markup.add(InlineKeyboardButton(text="1", callback_data=purchasing.new(id=id,quantity=1)),InlineKeyboardButton(text="2", callback_data=purchasing.new(id=id,quantity=2)),InlineKeyboardButton(text="3", callback_data=purchasing.new(id=id,quantity=3)),InlineKeyboardButton(text="4", callback_data=purchasing.new(id=id,quantity=4)),InlineKeyboardButton(text="5", callback_data=purchasing.new(id=id,quantity=5)))
-    markup.add(InlineKeyboardButton(text="6", callback_data=purchasing.new(id=id,quantity=6)),InlineKeyboardButton(text="7", callback_data=purchasing.new(id=id,quantity=7)),InlineKeyboardButton(text="8", callback_data=purchasing.new(id=id,quantity=8)),InlineKeyboardButton(text="9", callback_data=purchasing.new(id=id,quantity=9)),InlineKeyboardButton(text="10", callback_data=purchasing.new(id=id,quantity=10)))
+    markup.add(InlineKeyboardButton(text="1", callback_data=purchasing.new(id=id,quantity=1)),InlineKeyboardButton(text="2", callback_data=purchasing.new(id=id,quantity=2)),InlineKeyboardButton(text="3", callback_data=purchasing.new(id=id,quantity=3)))
+    markup.add(InlineKeyboardButton(text="4", callback_data=purchasing.new(id=id,quantity=4)),InlineKeyboardButton(text="5", callback_data=purchasing.new(id=id,quantity=5)),InlineKeyboardButton(text="6", callback_data=purchasing.new(id=id,quantity=6)))
     markup.add(InlineKeyboardButton(text="Back", callback_data="back"))
     return markup
 
 
-
+@dp.message_handler(lambda message: message.text == "Cancel",state='*')
+async def show_catalog(message: types.Message,state:FSMContext):
+    await state.reset_state()
+    await message.answer("Canceled")
+    await message.answer("Welcome to our shop,{}".format(message.from_user.first_name),
+                         reply_markup=await menu_keyboard())
+@dp.message_handler(lambda message: message.text == "cancel",state='*')
+async def show_catalog(message: types.Message,state:FSMContext):
+    await state.reset_state()
+    await message.answer("Canceled")
+    await message.answer("Welcome to our shop,{}".format(message.from_user.first_name),
+                         reply_markup=await menu_keyboard())
 
 @dp.message_handler(commands=["start", "menu"], state='*')
 async def start(message: types.Message):
@@ -100,7 +112,12 @@ async def start(message: types.Message):
                    (message.from_user.first_name, message.from_user.id,))
     conn.commit()
     print(message)
-    await message.answer("Welcome to our shop {}", reply_markup=await menu_keyboard())
+    await message.answer("""WELCOME TO KIM and MASTER,<b>{}</b>!
+Here you will find EVERYTHING you need to succeed‼️
+
+🤝Here you can automatically buy what you need🤫
+🤝If you have any problems - our support is online 24/7!
+🤝Good Luck‼️""", reply_markup=await menu_keyboard())
 
 
 @dp.message_handler(commands=["get_report"], state='*')
@@ -109,6 +126,10 @@ async def start(message: types.Message):
     await message.answer_document(open(excel, 'rb'))
 
 
+@dp.message_handler(lambda message: message.text == "Support🧑‍💼",state='*')
+async def show_catalog(message: types.Message,state:FSMContext):
+    await state.reset_state()
+    await message.answer("Our support: {}".format('@domahdesiki'))
 
 @dp.callback_query_handler(lambda c: c.data == 'back',state='*')
 async def back(callback_query: types.CallbackQuery,state:FSMContext):
@@ -123,7 +144,10 @@ async def show_catalog(message: types.Message):
 @dp.callback_query_handler(category.filter())
 async def show_products(call: types.CallbackQuery, callback_data: dict):
     category = callback_data.get("category")
-    await call.message.answer("Cards", reply_markup= await products_keyboard(category))
+    if category == 'Custom':
+        await call.message.answer("Write your custom card here")
+    else:
+        await call.message.answer("Cards", reply_markup= await products_keyboard(category))
 
 
 @dp.callback_query_handler(products.filter())
@@ -200,7 +224,7 @@ async def checking_payment(call: types.CallbackQuery, callback_data: dict):
 
 @dp.message_handler(commands=["add_product"], state='*')
 async def add_product(message: types.Message):
-    await message.answer("Write name of product\n(EXAMPLE prodcut x YY$)",reply_markup=ReplyKeyboardRemove())
+    await message.answer("Write name of product\n(PlayCard 25$)",reply_markup=ReplyKeyboardRemove())
     await Add_procut.name.set()
 
 @dp.message_handler(state=Add_procut.name, content_types=types.ContentTypes.TEXT)
@@ -213,7 +237,7 @@ async def add_product(message: types.Message, state: FSMContext):
 @dp.message_handler(state=Add_procut.category, content_types=types.ContentTypes.TEXT)
 async def add_product(message: types.Message, state: FSMContext):
     await state.update_data(category=message.text)
-    await message.answer('Write of product id')
+    await message.answer('Write id of product ')
     await Add_procut.product_id.set()
 
 @dp.message_handler(state=Add_procut.product_id, content_types=types.ContentTypes.TEXT)
@@ -242,8 +266,8 @@ async def add_price(message: types.Message, state: FSMContext):
         res = await state.get_data()
         cursor.execute('''INSERT INTO products(product_id,product_name,category,price) VALUES (?,?,?,?) ''',(res['product_id'],res['name'],res['category'],message.text.title()))
         conn.commit()
-        await message.answer("Product is added✅",reply_markup=await menu_keyboard())
-        await state.finish()
+        await message.answer("Write codes",reply_markup=await menu_keyboard())
+        await Add_procut.codes.set()
 
 
 if __name__ == '__main__':
